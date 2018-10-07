@@ -16,3 +16,38 @@ library(tidyverse)
 library(ggridges)
 ```
 
+# Problem 1
+
+**Load the data**
+
+```{r}
+library(p8105.datasets)
+```
+
+**Read and clean the data**
+
+•	format the data to use appropriate variable names;
+•	focus on the “Overall Health” topic
+•	include only responses from “Excellent” to “Poor”
+•	organize responses as a factor taking levels from “Excellent” to “Poor”
+
+```{r}
+
+brfss = 
+  
+  # read the data "brfss_smart2010" from the p8105.datasets package
+  brfss_smart2010 %>% 
+  
+  # clean up variable names
+  janitor::clean_names() %>% 
+  
+  # filter the data to only focus on "Overall Health" topic
+  filter(., topic == "Overall Health") %>% 
+  
+  # include only responses from “Excellent” to “Poor”
+  select(., year, locationabbr, locationdesc, response, data_value) %>%
+  
+  # mutate responses as a factor taking levels from “Excellent” to “Poor”
+  mutate(., response = as.factor(response))
+```
+
