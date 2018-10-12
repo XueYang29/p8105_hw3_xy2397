@@ -146,42 +146,63 @@ data("instacart")
 
 The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
 
-The dataset "Instacart" contains online grocery orders from instacart users.The size of the dataset is `r nrow(instacart)` rows x `r (ncol(instacart))` columns. 
+The dataset "Instacart" contains online grocery orders from instacart users. The size of the dataset is `r nrow(instacart)` rows x `r (ncol(instacart))` columns, which means that it contains `r nrow(instacart)` records of online orders about `r (ncol(instacart))` variables. There are some key variables such as id (order_id, product_id, user_id, aisle_id, department_id) for identifier, order_number for the order sequence number for this user, order_dow for the day of the week on which the order was placed, order_hour_of_day for the hour of the day on which the order was placed and product_name for the name of product.
 
+For example for the user whose order_id is 1, he(she) ordered online for 8 products, among those there were 4 products reordered. This order belongs to train evaluation set and this order is placed on Thursday for 10 hours, and it's 9 days since this user last order.
 Then, do or answer the following (commenting on the results of each):
+
 •	How many aisles are there, and which aisles are the most items ordered from?
 
 ```{r}
 instacart %>% 
   group_by(aisle) %>% 
   summarize(number = n()) %>% 
-  mutate(aisle_rank = min_rank(desc(number))) %>% 
-  filter(aisle_rank == "1")
+  top_n(5) 
 ```
-So there are totally 134 aisles there, and fresh vegetables is the most items ordered from.
+So there are totally 134 aisles there, and fresh vegetables is the most items ordered from for 150609 orders and following is fresh fruits for 150473 orders.
 
 •	Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
 
 ```{r}
 instacart %>% 
-  group_by(aisle) %>% 
+  group_by(aisle_id) %>% 
   summarise(number = n()) %>% 
-  ggplot(aes(x = aisle, y = number)) +
-  geom_point()
+  ggplot(aes(x = aisle_id, y = number, color = aisle_id)) +
+  geom_point()+
+  labs(
+    title = "Aisle plot",
+    x = "Aisle_id",
+    y = "Number of items ordered in each aisle",
+    caption = "Data from the p8105.datasets package"
+  ) +
+  viridis::scale_color_viridis(
+    name = "Aisle_id",
+    discrete = FALSE,
+  ) +
+  scale_x_continuous(
+    breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80,
+               90, 100, 110, 120, 130)
+  ) +
+  theme(legend.position = "bottom")
 ```
 
+Since there are 134 different kinds of aisles, it is not readale to put the name of aisles in x-axis, so we use aisle_id instead of aisle name to represent different kinds of aisles and color the number of items differently to indicate different aisles. In this way, the plot is more readable for others.
 
 •	Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
 
 ```{r}
 instacart %>% 
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits" ) ) %>% 
-  group_by(aisle) %>% 
+  group_by(aisle, product_name) %>% 
   summarize(number = n()) %>% 
+  top_n(1) %>% 
   knitr::kable(digits = 3)
 
 ```
 
+We can first filter these three types of aisles from the full dataset and then grouped the dataset by these three different aisles and product_name. When we summarize the number of each group and select the largest number of each group, we can now get the most popular item in each of the three aisles. 
+
+From the table, we can find that the most popular item in "baking ingredients" is "Light Brown Sugar" which saled for 499 orders, the most popular item in "dog food care" is "Snack Sticks Chicken & Rice Recipe Dog Treats" which saled for 30 orders and he most popular item in "packaged vegetables fruits" is "Organic Baby Spinach" which saled for 9784 orders.
 
 •	Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 
@@ -195,6 +216,10 @@ instacart %>%
   knitr::kable(digits = 3)
   
 ```
+
+From the table we can easily read the mean hours of the day at each day of the week users spend on product "Coffee Ice Cream" and "Pink Lady Apples". We can find that people spend most hours for "Coffee Ice Cream" at Tuesday and for "Pink Lady Apples" at Wednesday.
+
+
 
 # Problem 3
 ```{r}
