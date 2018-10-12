@@ -10,6 +10,8 @@ output: github_document
 
 library(tidyverse)
 library(ggridges)
+library(patchwork)
+library(hexbin)
 ```
 
 # Problem 1
@@ -135,7 +137,18 @@ brfss %>%
 
 # Problem 2
 
-The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. Then, do or answer the following (commenting on the results of each):
+**Load and read the data**
+
+```{r}
+data("instacart")
+```
+
+
+The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
+
+The dataset "Instacart" contains online grocery orders from instacart users.The size of the dataset is `r nrow(instacart)` rows x `r (ncol(instacart))` columns. 
+
+Then, do or answer the following (commenting on the results of each):
 •	How many aisles are there, and which aisles are the most items ordered from?
 
 ```{r}
@@ -183,4 +196,139 @@ instacart %>%
   
 ```
 
+# Problem 3
+```{r}
+data("ny_noaa")
+ny_noaa
+```
 
+The goal is to do some exploration of this dataset. 
+
+To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and indicating the extent to which missing data is an issue. 
+
+This dataset "ny_noaa" provides some weather data, it contains records from 747 different weather stations for about datas from 10,957 obervational  days. The size of the dataset is `r nrow(ny_noaa)` rows x `r (ncol(ny_noaa))` columns. The key variables are id (weather station ID), date (date of observation), prcp (precipitation for tenths of mm), snow (snowfall for mm), snwd (snow depth for mm) and tmax and tmin (maximum and mimimum temperature for tenths of degrees C). At last, we calculate the proportion of missing value fro each vairable, we have  0.0561958 for prop, 0.146896 for snow, 0.2280331 for snwd, 0.4371025 for tmax and 0.4371264 for tmin.
+
+```{r}
+ny_noaa %>% 
+  group_by(id) %>% 
+  summarise(number = n())
+
+ny_noaa %>% 
+  group_by(date) %>% 
+  summarise(number = n()) 
+
+prcp_na =
+  ny_noaa %>% 
+  filter(is.na(prcp)) %>% 
+  nrow()
+prcp_prop = prcp_na/nrow(ny_noaa)
+prcp_prop
+
+snow_na =
+  ny_noaa %>% 
+  filter(is.na(snow)) %>% 
+  nrow()
+snow_prop = snow_na/nrow(ny_noaa)
+snow_prop
+
+snwd_na =
+  ny_noaa %>% 
+  filter(is.na(snwd)) %>% 
+  nrow()
+snwd_prop = snwd_na/nrow(ny_noaa)
+snwd_prop
+
+tmax_na =
+  ny_noaa %>% 
+  filter(is.na(tmax)) %>% 
+  nrow()
+tmax_prop = tmax_na/nrow(ny_noaa)
+tmax_prop
+
+tmin_na =
+  ny_noaa %>% 
+  filter(is.na(tmin)) %>% 
+  nrow()
+tmin_prop = tmin_na/nrow(ny_noaa)
+tmin_prop
+```
+
+
+Then, do or answer the following (commenting on the results of each):
+
+•	Do some data cleaning. Create separate variables for year, month, and day. Ensure observations for temperature, precipitation, and snowfall are given in reasonable units. For snowfall, what are the most commonly observed values? Why?
+
+```{r}
+noaa = 
+  ny_noaa %>%
+  separate(date, into = c("year", "month", "day"), sep = "-")
+```
+
+```{r}
+noaa %>%
+  count(snow) %>% 
+  top_n(5) 
+
+```
+So for snowfall, 0 is the most commonly observed value, since 0 has been observed for 2008508 times from the dataset. The second commonly observed value id 25 and it was observed for 31022 times.
+
+•	Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+
+```{r}
+noaa %>% 
+  filter(month %in% c("01", "07")) %>% 
+  mutate(tmax = as.numeric(tmax)) %>% 
+  group_by(id, month) %>% 
+  summarize(average_tmax = mean(tmax, na.rm = TRUE)) %>% 
+  filter(!is.na(average_tmax)) %>% 
+  ggplot(aes(x = id, y = average_tmax, color = month)) +
+  geom_point(alpha = 0.5) +
+  geom_line() +
+  facet_grid(~month) +
+  labs(
+    title = "Average max temperature two-panel plot",
+    x = "Weather Station",
+    y = "Average max temperature across year (tenths of degrees CC)",
+    caption = "Data from the p8105.datasets package"
+  ) +
+  theme(legend.position = "bottom")
+  
+```
+When draw a plot for average max temperature for in January and in July in each station across years, we first delete all the missing value. From the two-panel plot we can easily find that the average temperature recorded from each station in January is lower than in July, it's obviously, since it's winter in January and summer in July. And there are also some outliers in January which may be explained that there are few countries and territories are especially cold in January.
+
+•	Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+
+```{r}
+tmax_tmin =
+  noaa %>% 
+  filter(!is.na(tmax), !is.na(tmin)) %>% 
+  ggplot(aes(x = tmax, y = tmin)) +
+  geom_hex(bins = 300) +
+  labs(
+    title = "Tmax vs Tmin",
+    x = "Maximum temperature",
+    y = "Minimum temperature",
+    caption = "Data from the p8105.datasets package"
+  ) +
+  scale_x_discrete(
+    limits = c(-250, 250)
+  ) +
+  theme(legend.position = "bottom")
+
+snowfall =
+  noaa %>% 
+  filter(snow %in% 1:99) %>% 
+  ggplot(aes(x = snow, fill = year)) +
+  geom_histogram(alpha = 0.5) +
+  labs(
+    title = "Distribution of snowfall",
+    x = "Snowfall values (mm)",
+    y = "Frequency",
+    caption = "Data from the p8105.datasets package"
+  ) +
+  theme(legend.position = "bottom")
+
+tmax_tmin + snowfall
+```
+
+So when we deal with the 
