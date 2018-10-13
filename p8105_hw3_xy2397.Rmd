@@ -27,7 +27,7 @@ library(p8105.datasets)
 •	format the data to use appropriate variable names;
 •	focus on the “Overall Health” topic
 •	include only responses from “Excellent” to “Poor”
-•	organize responses as a factor taking levels from “Excellent” to “Poor”
+•	organize responses as a factor taking levels ordered from “Excellent” to “Poor”
 
 ```{r}
 
@@ -42,15 +42,8 @@ brfss =
   # filter the data to only focus on "Overall Health" topic
   filter(., topic == "Overall Health") %>% 
   
-   # mutate responses as a factor taking levels from “Excellent” to “Poor”
-  mutate(., response = factor(response)) %>% 
-  
-  # include only responses from “Excellent” to “Poor”
-  select(., year, locationabbr, locationdesc, response, data_value) %>%
-  spread(key = "response", value = "data_value") %>% 
-  
-  # clean up variable names again
-  janitor::clean_names()
+  # mutate responses as a factor taking levels ordered from “Excellent” to “Poor”
+  mutate(., response = factor(response, levels  = c("Excellent", "Very good", "Good", "Fair", "Poor")))
   
 ```
 
@@ -59,24 +52,24 @@ brfss =
 •	In 2002, which states were observed at 7 locations?
 
 ```{r}
-brfss_2002 = 
-  brfss %>% 
-  filter(year == "2002") %>%
+brfss %>% 
+  filter(year == "2002") %>% 
+  distinct(locationdesc, .keep_all = TRUE) %>% 
   group_by(locationabbr) %>% 
   summarize(number = n()) %>% 
   filter(number == 7)
-
-
-brfss_2002
 ```
+
+By filter the full dataset for year "2002" and distinct the locationdesc, we obtain one observation from each location. When we group the data by locationabbr and count for the number of observations, we can finally get the number of locations in each states.
 
 So we can see that states "CT", "FL" and "NC" were observed at 7 locations.
 
-•	Make a “spaghetti plot” that shows the number of observations in each state from 2002 to 2010.
+•	Make a “spaghetti plot” that shows the number of locations in each state from 2002 to 2010.
 
 ```{r}
 
   brfss %>% 
+  distinct(locationdesc, .keep_all = TRUE) %>% 
   group_by(year, locationabbr) %>% 
   summarize(number = n()) %>% 
   ggplot(aes(x = year , y = number, color = locationabbr)) +
@@ -89,12 +82,18 @@ So we can see that states "CT", "FL" and "NC" were observed at 7 locations.
   ) 
 ```
 
+By making a plot to show the number of distinct countis in each state, we need first to distinct the locationdesc, after that count for the number of observations of each states by group the dataset by locationabbr and year. 
+
+From what we draw in "Spaghetti plot", we can find that the number of locations in each states observed is increased from 2002 to 2010 (except for few states such as "OK" decreased from 2005 to 2009), and state "FL" increased a lot for a fast speed from 2007 to 2010.
 
 •	Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
 
 ```{r}
 brfss %>% 
   filter(year %in% c("2002", "2006", "2010"), locationabbr == "NY") %>% 
+  select(1:8) %>% 
+  spread(key = "response", value = "sample_size") %>% 
+  janitor::clean_names() %>% 
   mutate(prop = excellent / (excellent + very_good + good + fair + poor)) %>% 
   group_by(year) %>% 
   summarize(mean = mean(prop, na.rm = TRUE),
@@ -102,22 +101,28 @@ brfss %>%
   knitr::kable(digits = 3)
 ```
 
+For the results, we can find that year 2002 has the highest mean prooportion of "Excellent" and thar year 2006 has the lowest standard deviation of rooportion of "Excellent".
+
 •	For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
 
 ```{r}
 brfss %>% 
-  mutate(exc_prop = excellent / (excellent + very_good + good + fair + poor)) %>%
-  mutate(vgd_prop = very_good / (excellent + very_good + good + fair + poor)) %>%
-  mutate(gd_prop = good / (excellent + very_good + good + fair + poor)) %>%
-  mutate(fa_prop = fair / (excellent + very_good + good + fair + poor)) %>%
-  mutate(pr_prop = poor / (excellent + very_good + good + fair + poor)) %>% 
+  select(1:8) %>% 
+  spread(key = "response", value = "sample_size") %>% 
+  janitor::clean_names() %>% 
+  mutate(exc_prop = excellent / (excellent + very_good + good + fair + poor),
+         vgd_prop = very_good / (excellent + very_good + good + fair + poor),
+         gd_prop = good / (excellent + very_good + good + fair + poor),
+         fa_prop = fair / (excellent + very_good + good + fair + poor),
+         pr_prop = poor / (excellent + very_good + good + fair + poor)) %>% 
   group_by(year, locationabbr) %>% 
   summarize(exc_prop_average = mean(exc_prop,na.rm = TRUE),
             vgd_prop_average = mean(vgd_prop, na.rm = TRUE),
             good_prop_average = mean(gd_prop, na.rm = TRUE),
             fair_prop_average = mean(fa_prop, na.rm = TRUE),
             poor_prop_average = mean(pr_prop, na.rm = TRUE)) %>% 
-  gather(., key = "response", value = "average_prop", exc_prop_average:poor_prop_average) %>%    ggplot(aes(x = year, y = average_prop, color = locationabbr)) +
+  gather(., key = "response", value = "average_prop", exc_prop_average:poor_prop_average) %>%    
+  ggplot(aes(x = year, y = average_prop, color = locationabbr)) +
   geom_point()+
   facet_grid(~response) +
   labs(
@@ -133,7 +138,7 @@ brfss %>%
   theme(legend.position = "bottom")
 ```
 
-
+From the five-panel plot, we can find that the "poor" response has the lowest average proportion among the response and "Very good" response has the highest average proportion. And for response "Excellent", the average proportion is decreased from year 2002 to 2010.
 
 # Problem 2
 
@@ -188,7 +193,7 @@ instacart %>%
 
 Since there are 134 different kinds of aisles, it is not readale to put the name of aisles in x-axis, so we use aisle_id instead of aisle name to represent different kinds of aisles and color the number of items differently to indicate different aisles. In this way, the plot is more readable for others.
 
-•	Make a table showing the most popular item aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
+•	Make a table showing the most popular item in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”
 
 ```{r}
 instacart %>% 
