@@ -24,10 +24,7 @@ library(p8105.datasets)
 
 **Read and clean the data**
 
-•	format the data to use appropriate variable names;
-•	focus on the “Overall Health” topic
-•	include only responses from “Excellent” to “Poor”
-•	organize responses as a factor taking levels ordered from “Excellent” to “Poor”
+
 
 ```{r}
 
@@ -53,10 +50,15 @@ brfss =
 
 ```{r}
 brfss %>% 
+  
+  # filter the dataset for only year 2002
   filter(year == "2002") %>% 
+  # filter the dataset to distinct locations
   distinct(locationdesc, .keep_all = TRUE) %>% 
+  # count the number of locations by states
   group_by(locationabbr) %>% 
   summarize(number = n()) %>% 
+  # focus on the number equals to 7
   filter(number == 7)
 ```
 
@@ -69,9 +71,12 @@ So we can see that states "CT", "FL" and "NC" were observed at 7 locations.
 ```{r}
 
   brfss %>% 
+  # filter the dataset for distinct locations
   distinct(locationdesc, .keep_all = TRUE) %>% 
+  # count the number of locations by year and state
   group_by(year, locationabbr) %>% 
   summarize(number = n()) %>% 
+  # make the plot 
   ggplot(aes(x = year , y = number, color = locationabbr)) +
   geom_line() +
   labs(
@@ -90,11 +95,22 @@ From what we draw in "Spaghetti plot", we can find that the number of locations 
 
 ```{r}
 brfss %>% 
+  # fiter the dataset for year "2002", "2006" and "2010", and for state "NY"
   filter(year %in% c("2002", "2006", "2010"), locationabbr == "NY") %>% 
+  
+  # select some useful variables
   select(1:8) %>% 
+  
+  # spread the data so that responses (excellent to poor) are variables taking the value of sample_zise
   spread(key = "response", value = "sample_size") %>% 
+  
+  # clean the name of variables
   janitor::clean_names() %>% 
+  
+  # create a new variable indicate the proportion of “Excellent” responses
   mutate(prop = excellent / (excellent + very_good + good + fair + poor)) %>% 
+  
+  # calculate the mean and standard deviation of proportion grouped by years
   group_by(year) %>% 
   summarize(mean = mean(prop, na.rm = TRUE),
             sd = sd(prop, na.rm = TRUE)) %>% 
@@ -107,21 +123,37 @@ For the results, we can find that year 2002 has the highest mean prooportion of 
 
 ```{r}
 brfss %>% 
+  # select some useful variables
   select(1:8) %>% 
-  spread(key = "response", value = "sample_size") %>% 
+  
+  # spread the data so that responses (excellent to poor) are variables taking the value of sample_zise
+  spread(key = "response", value = "sample_size") %>%
+  
+  # clean the name of variables
   janitor::clean_names() %>% 
+  
+  # create the variables for proportion in each response category
   mutate(exc_prop = excellent / (excellent + very_good + good + fair + poor),
          vgd_prop = very_good / (excellent + very_good + good + fair + poor),
          gd_prop = good / (excellent + very_good + good + fair + poor),
          fa_prop = fair / (excellent + very_good + good + fair + poor),
          pr_prop = poor / (excellent + very_good + good + fair + poor)) %>% 
+  
+  # count the average proportions across locations in a state in each year
   group_by(year, locationabbr) %>% 
   summarize(exc_prop_average = mean(exc_prop,na.rm = TRUE),
             vgd_prop_average = mean(vgd_prop, na.rm = TRUE),
             good_prop_average = mean(gd_prop, na.rm = TRUE),
             fair_prop_average = mean(fa_prop, na.rm = TRUE),
             poor_prop_average = mean(pr_prop, na.rm = TRUE)) %>% 
-  gather(., key = "response", value = "average_prop", exc_prop_average:poor_prop_average) %>%    
+  
+  # gather the response and average proportion to make it more readable
+  gather(., key = "response", value = "average_prop", exc_prop_average:poor_prop_average) %>% 
+  
+  # mutate responses as a factor taking levels ordered from “Excellent” to “Poor”
+  mutate(response = forcats::fct_relevel(response, c("exc_prop_average", "vgd_prop_average", "good_prop_average", "fair_prop_average", "poor_prop_average"))) %>% 
+  
+  # make a five-panel plot
   ggplot(aes(x = year, y = average_prop, color = locationabbr)) +
   geom_point()+
   facet_grid(~response) +
@@ -149,19 +181,29 @@ data("instacart")
 ```
 
 
-The goal is to do some exploration of this dataset. To that end, write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illstrative examples of observations. 
+**Write a short description of the dataset**
 
-The dataset "Instacart" contains online grocery orders from instacart users. The size of the dataset is `r nrow(instacart)` rows x `r (ncol(instacart))` columns, which means that it contains `r nrow(instacart)` records of online orders about `r (ncol(instacart))` variables. There are some key variables such as id (order_id, product_id, user_id, aisle_id, department_id) for identifier, order_number for the order sequence number for this user, order_dow for the day of the week on which the order was placed, order_hour_of_day for the hour of the day on which the order was placed and product_name for the name of product.
+The dataset "Instacart" contains online grocery orders from instacart users. The size of the dataset is `r nrow(instacart)` rows x `r (ncol(instacart))` columns, which means that it contains `r nrow(instacart)` records of online orders about `r (ncol(instacart))` variables. There are some key variables such as id (order_id, product_id, user_id, aisle_id, department_id) for identifier, order_number for the order sequence number for this user, which the maximum is `r max(instacart$order_number)` ,the minimum is `r min(instacart$order_number)` and the median is `r median(instacart$order_number)`, order_dow for the day of the week on , order_hour_of_day for the hour of the day on which the order was placed, which the order was placed, which the maximum is `r max(instacart$order_hour_of_day)` ,the minimum is `r min(instacart$order_hour_of_day)` and the median is `r median(instacart$order_hour_of_day)`and product_name for the name of product.
+
+
+**Giving illstrative examples of observations**
 
 For example for the user whose order_id is 1, he(she) ordered online for 8 products, among those there were 4 products reordered. This order belongs to train evaluation set and this order is placed on Thursday for 10 hours, and it's 9 days since this user last order.
 Then, do or answer the following (commenting on the results of each):
+
+
+**Answering the questions using this dataset**
 
 •	How many aisles are there, and which aisles are the most items ordered from?
 
 ```{r}
 instacart %>% 
+  
+  # count the number of items grouped by aisle 
   group_by(aisle) %>% 
   summarize(number = n()) %>% 
+  
+  # focus on the top 5 high number
   top_n(5) 
 ```
 So there are totally 134 aisles there, and fresh vegetables is the most items ordered from for 150609 orders and following is fresh fruits for 150473 orders.
@@ -170,8 +212,12 @@ So there are totally 134 aisles there, and fresh vegetables is the most items or
 
 ```{r}
 instacart %>% 
+  
+  # # count the number of items grouped by aisle_id
   group_by(aisle_id) %>% 
   summarise(number = n()) %>% 
+  
+  # make a plot shows the number of items ordered in each aisle
   ggplot(aes(x = aisle_id, y = number, color = aisle_id)) +
   geom_point()+
   labs(
@@ -197,9 +243,15 @@ Since there are 134 different kinds of aisles, it is not readale to put the name
 
 ```{r}
 instacart %>% 
+  
+  # filter the dataset for “baking ingredients”, “dog food care”, and “packaged vegetables fruits” aisles
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits" ) ) %>% 
+  
+  # count the number of items in each of these three aisles
   group_by(aisle, product_name) %>% 
   summarize(number = n()) %>% 
+  
+  # focus on the highest number in each aisle
   top_n(1) %>% 
   knitr::kable(digits = 3)
 
@@ -214,9 +266,15 @@ From the table, we can find that the most popular item in "baking ingredients" i
 
 ```{r}
 instacart %>% 
+  
+  # filter the dataset for "Pink Lady Apples" and "Coffee Ice Cream"
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  
+  # count for the mean hour of the day on each day of the week
   group_by(product_name, order_dow) %>% 
   summarize(mean_hour_day = mean(order_hour_of_day, na.rm = TRUE)) %>% 
+  
+  # spread the data make the table more readable
   spread(key = "order_dow", value = "mean_hour_day") %>% 
   knitr::kable(digits = 3)
   
@@ -227,6 +285,9 @@ From the table we can easily read the mean hours of the day at each day of the w
 
 
 # Problem 3
+
+**Load the data**
+
 ```{r}
 data("ny_noaa")
 ny_noaa
